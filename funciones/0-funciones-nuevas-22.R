@@ -1,35 +1,39 @@
-# library(tidyverse)
-
-
-#z
 # *********************************************************************************************
+# para aplicar algunos ejemplos
+nn <- 100000
 
-#para aplicar algunos ejemplos
-# nn <- 5001
-#
-# df <- data.frame(
-#   p01 = sample(c("a", "b"), nn, replace = T),
-#   p02_01 = sample(c("a", "b", "c"), nn, replace = T),
-#   p02_02 = sample(c("a", "b", "c"), nn, replace = T),
-#   p02_03 = sample(c("a", "b", "c"), nn, replace = T),
-#   gestion = sample(c("Estatal", "No estatal"), nn, replace = T),
-#   sexo = sample(c("Hombre", "Mujer"), nn, replace = T),
-#   area = sample(c("Urbano", "Rural"), nn, replace = T),
-#   medida = runif(nn, min = 450, max = 650),
-#   peso = sample(c(0.9, 1, 1.1, 1.2, 1.3), nn, replace = T))
+df <- data.frame(
+   p01 = sample(c("a", "b"), nn, replace = T),
+   p02_01 = sample(c("a", "b", "c"), nn, replace = T),
+   p02_02 = sample(c("a", "b", "c"), nn, replace = T),
+   p02_03 = sample(c("a", "b", "c"), nn, replace = T),
+   gestion = sample(c("Estatal", "No estatal"), nn, replace = T),
+   sexo = sample(c("Hombre", "Mujer"), nn, replace = T),
+   area = sample(c("Urbano", "Rural"), nn, replace = T),
+   medida = runif(nn, min = 450, max = 650),
+   peso = sample(c(0.9, 1, 1.1, 1.2, 1.3, 1.5, 1.6, 1.7), nn, replace = T))
 
-#********************************************************************************************
+df$p01 <- as.factor(df$p01)
+df$p02_01 <- as.factor(df$p02_01)
+df$p02_02 <- as.factor(df$p02_02)
+df$p02_03 <- as.factor(df$p02_03)
+df$gestion <- as.factor(df$gestion)
+df$sexo <- as.factor(df$sexo)
+# ********************************************************************************************
 
-#pega_lista -----
-# primero agrega una columna con el nombre de la lista, despues pega las listas
-# util cuando un df se separa en listas segun algun estrato y se le aplican las
-# mismas funciones para luego pegarlas otra vez...
+# funciones:
 
-#  pega_lista(data, nc)
-#    data: lista de dataframe
-#    nc: nombre de la columna que tendra un vector con el nombre de la lista
+# DESCRIPTIVOS ----
 
 pega_lista <- function(data, nc){
+
+  # primero agrega una columna con el nombre de la lista, despues pega las listas
+  # util cuando un df se separa en listas segun algun estrato y se le aplican las
+  # mismas funciones para luego pegarlas otra vez...
+
+  #  pega_lista(data, nc)
+  #    data: lista de dataframe
+  #    nc: nombre de la columna que tendra un vector con el nombre de la lista
 
   if(!inherits(data, "list")) stop("Se aplica sobre una lista")
   if(length(unique(unlist(lapply(data, ncol)))) != 1) warning("Hay una cantidad diferente de columnas")
@@ -42,84 +46,59 @@ pega_lista <- function(data, nc){
   rownames(temp) <- NULL
   return(temp)
 
+  # ejemplo:
+  # ejem <- list(hom = data.frame(v = 1:3), muj = data.frame(v = 4:6))
+  # pega_lista(ejem, "nombre")
+
 }
 
-#ejemplo:
-# ejem <- list(hom = data.frame(v = 1:3), muj = data.frame(v = 4:6))
-# ejem2 <- list(A = data.frame(a = 1:10000, b = sample(letters, 10000, replace = TRUE)),
-#               B = data.frame(a = 1:10000, b = sample(letters, 10000, replace = TRUE)))
-# pega_lista(ejem, "nombre")
 
-# ejem
-#
-# ejem2
-#
-# pega_lista(ejem, "nombre")
-# pega_lista(ejem2, "nombre")
-# dplyr::bind_rows(ejem, .id = "nombre")
-# dplyr::bind_rows(ejem2, .id = "nombre")
-#
-#
-# ej <- list(hom = data.frame(v = 1:3), muj = data.frame(x = 4:6))
-# pega_lista(ej, "nombre")
-#
-# ej <- list(hom = data.frame(v = 1:3), muj = data.frame(x = 4:6, z = 1:3))
-# pega_lista(ej, "nombre")
-#
-# dplyr::bind_rows(ej, .id = "nombre")
+tabla_freq_dplyr <- function(data, x, peso = NULL, na = NULL, compara = NULL){
 
-#************************************************************************************************
+  # tabla de frecuencias para una columna
+  # lo mismo que table()... pero devuelve los % redondeados, en dataframe y acepta pesos
 
-# tabla_freq ----
-# tabla de frecuencias para una columna
-# lo mismo que table()... pero devuelve los % redondeados, en dataframe y acepta pesos
+  # ejemplo:
+  # tabla_freq_dplyr(df1, "p01")
 
-tabla_freq <- function(data, x, peso = NULL){
+  # df1 %>%
+  #   group_by(gestion) %>%
+  #   tabla_freq_dplyr("p01")
 
+  if(!is.null(peso)){peso_s <- dplyr::sym(peso)}
   if(!is.null(peso)){
-    f <- paste0(peso, "~", x)
-    df1 <- aggregate(as.formula(f), data = data, FUN = sum)
-    names(df1)[names(df1) == peso] <- "Freq"
-  }else{
-    df1 <- as.data.frame(table(data[x]))
+    if(!sum(is.na(data[[peso]])) == 0) stop("La variable de pesos tiene missing")
   }
 
-  df2 <- within(df1, {prop = round(prop.table(Freq)*100, 1)})
-  names(df2) <- c("opcion", "n", "prop")
+  x_s <- dplyr::sym(x)
 
-  return(df2)
+  data2 <- data %>%
+    {if(!is.null(peso)) dplyr::count(., {{x_s}}, wt = {{peso_s}}) else dplyr::count(., {{x_s}})} %>%
+    {if(is.null(na)) dplyr::filter(., !is.na({{x_s}})) else .} %>%
+    dplyr::mutate(prop = round(prop.table(n)*100, 1))
+
+  names(data2)[names(data2) == x] <- "opcion"
+
+  if(dplyr::is_grouped_df(data) & !is.null(compara)){ #util para comparar los %
+    data2 <- tidyr::pivot_wider(data2, -n, names_from = names(group_keys(data)), values_from = prop)
+  }
+
+  return(data2)
+
 
 }
 
-#
-# df1 <- df
-#
-# tabla_freq(df1, "p01")
-# tabla_freq(df1, "p01", "peso")
-#
-# df$peso[1] <- NA
-# df1$p01[5] <- NA
-#
-# df$peso <- na.omit(df$peso)
-#df <- na.omit(df)
-#df[, complete.cases(df[, "p01"])]
 
-# f <- paste0(peso, "~", x)
-# df1 <- aggregate(peso~p01, data = df1, FUN = sum)
-# aggregate(peso~p01, data = df1, FUN = sum, na.action=NULL)
+tabla_freq_columnas_dplyr <- function(data, nomvar, peso = NULL, starts = NULL, na = NULL){
 
+  # tabla de frecuencias (tabla_freq) para varias columnas
 
-#****************************************************************************************
+  # data: data.frame
+  # nomvar: vector con el nombre de las columnas. Si se quiere aplicar sobre columnas que comparten
+  #         el mismo nombre (ej: p02_01, p02_02) se coloca "p02" y starts = TRUE.
 
-#tabla_freq_columnas ----
-
-# tabla de frecuencias (tabla_freq) para varias columnas
-
-# data: data.frame
-# nomvar: vector con el nombre de las columnas. Si se quiere aplicar sobre columnas que comparten
-#         el mismo nombre (ej: p02_01, p02_02) se coloca "p02" y starts = TRUE.
-
-tabla_freq_columnas <- function(data, nomvar, peso = NULL, starts = NULL){
+  #ejemplo:
+  #tabla_freq_columnas(df1, nomvar = "p02", starts = TRUE)
 
   if(!is.null(starts)){
     nom <- names(data[, grep(paste0("^", nomvar), names(data), value = TRUE)])
@@ -129,73 +108,22 @@ tabla_freq_columnas <- function(data, nomvar, peso = NULL, starts = NULL){
     names(nom) <- nom
   }
 
-  df2 <- lapply(nom, function(x) tabla_freq(data, x, peso = peso))
-
-  #pega_lista(df2, "var")
+  df2 <- lapply(nom, function(x) tabla_freq_dplyr(data, x, peso = peso, na = na))
   dplyr::bind_rows(df2, .id = "var")
 
 }
 
-# tabla_freq_columnas(df, "p01") #es lo mismo que tabla_freq
-# tabla_freq_columnas(df, nomvar = c("p01", "p02_01", "sexo"))
-# tabla_freq_columnas(df, nomvar = "p02", starts = TRUE)
-# tabla_freq_columnas(df, nomvar = "p02", peso = "peso", starts = TRUE)
-
-
-#******************************************************************************************
-
-#tabla_freq_estrato
-# tabla de frecuencias segun estrato
-# probando el performance de la funcion, la funcion se vuelve mas lenta al
-#  aumentar el numero de grupos. Pero es muy util para 1 o 2 grupos.
-#  (suficiente para un reporte/excel [segun gestion o segun gestion y sexo, por ejemplo])
-
-
-tabla_freq_estrato <- function(data, var, grupo, peso = NULL, compara = NULL){
-
-  if(length(grupo) == 1){
-    names(data)[names(data) == grupo] <- "group_temp"
-  }else{
-    data$group_temp <- apply(data[, grupo], 1, paste, collapse = "-")
-  }
-
-  df2 <- lapply(split(data, data[["group_temp"]]), function(x) tabla_freq(x, var, peso = peso))
-  df3 <- pega_lista(df2, "estrato")
-  #df3 <- dplyr::bind_rows(df2, .id = "estrato")
-
-  if(length(grupo) == 1){
-    names(df3)[names(df3) == 'estrato'] <- grupo
-  }else{
-    df3 <- data.frame(df3[1:3], do.call(rbind, strsplit(df3[["estrato"]], "-")))
-    names(df3) <- c(names(df3[1:3]), grupo)
-  }
-
-  if(length(grupo) == 1 & !is.null(compara)){ #util para comparar los %
-    df3 <- reshape(df3[-2], idvar = "opcion", timevar = grupo, direction = "wide")
-  }
-
-  return(df3)
-
-}
-
-# tabla_freq_estrato(df, "p02_01", grupo = "gestion")
-# tabla_freq_estrato(df, "p02_01", grupo = "gestion", compara = TRUE)
-# tabla_freq_estrato(df, "p02_01", grupo = c("gestion", "area"), peso = "peso")
-
-
 #***********************************************************************************
 
-library(lavaan)
-
-#reporte_lavaan ----
-
-# toma un objeto cfa lavaan para acomodarlo para el reporte psicometrico
-# acomoda las cargas factoriales e indicadores de ajuste en una tabla
-
-# model_cfa_lavaan: objeto cfa lavaan
-# puntajes: logical si es que se quiere puntajes
+# PISCOMETRICO ----
 
 reporte_lavaan <- function(model_cfa_lavaan, puntajes = TRUE){
+
+  # toma un objeto cfa lavaan para acomodarlo para el reporte psicometrico
+  # acomoda las cargas factoriales e indicadores de ajuste en una tabla
+
+  # model_cfa_lavaan: objeto cfa lavaan
+  # puntajes: logical si es que se quiere puntajes
 
   #cargas factoriales estandarizadas
   m <- lavaan::standardizedSolution(model_cfa_lavaan, ci = FALSE, cov.std = FALSE)
@@ -226,20 +154,6 @@ reporte_lavaan <- function(model_cfa_lavaan, puntajes = TRUE){
   else {return(list(cargas = m, indicadores = indicadores1, confiabilidad = confiabilidad))}
 
 }
-
-# lavaan::parameterEstimates(m1, standardized = TRUE)
-# m1 <- cfa(mm, data = bd3[-1], ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
-# fit1 <- round(lavaan::fitmeasures(m1, c("cfi", "tli", "srmr", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper")), 4)
-# indicadores1 <- data.frame(Indicadores = names(fit1)[1:4], Valores = unclass(fit1)[1:4], row.names = NULL)
-# indicadores1 <- within(indicadores1, {ci =
-#   ifelse(Indicadores == "rmsea",  paste0("[", fit1[5], "-", fit1[6], "]"), "")})
-#
-# summary(m1)
-# summary(m1, fit.measures=TRUE)
-#
-# paste0("[", fit1[5], "-", fit1[6], "]")
-
-#**************************************
 
 
 invarianza1 <- function(m, data, grupo){
@@ -274,67 +188,67 @@ invarianza1 <- function(m, data, grupo){
 }
 
 
-#***************************************************************************************
-
-library(psych)
-
-#pca_umc_reporte ----
-
-#toma un data.frame y aplica PCA
-#devuelve las varianza explicada y cargas del primer componente
-
-# x: data.frame
-# corr: por defecto aplica correlacion de pearson, podemos colocar 'poly' para indicar
-#       correlacion policorica
-# puntajes: logical si es que se quiere puntajes
-
 pca_umc_reporte <- function(x, corr = NULL, puntajes = TRUE){
 
-  if(is.null(corr)){
-    val <- eigen(cor(x))$values #autovalores
-    t_vec <- t(eigen(cor(x))$vectors) # transpuesta de autovectores
+  #toma un data.frame y aplica PCA
+  #devuelve las varianza explicada, cargas del primer componente y alpha de cronbach
 
+  # x: data.frame
+  # corr: por defecto aplica correlacion de pearson, podemos colocar 'poly' para indicar
+  #       correlacion policorica
+  # puntajes: logical si es que se quiere puntajes
+
+  if(sum(sapply(x, function(xx) sum(is.na(xx)))) > 0) stop("Es preferible que no hayan NAs en las columnas =)")
+
+  if(is.null(corr)){
+    ee <- eigen(cor(x), symmetric = FALSE) # symmetric=FALSE previene cargas negativas [espero]
   }else{
     cor_pol <- psych::polychoric(x)$rho
-    val <- eigen(cor_pol)$values #autovalores
-    t_vec <- t(eigen(cor_pol)$vectors) # transpuesta de autovectores
-    confiabilidad <- psych::alpha(cor_pol, warnings = FALSE)$feldt$alpha[[1]] #Confiabilidad
+    ee <- eigen(cor_pol, symmetric = FALSE)
+    alpha <- psych::alpha(cor_pol, warnings = FALSE)$feldt$alpha[[1]] #Confiabilidad
   }
 
-  media_x <- colMeans(x)
-  sd_x <- purrr::map_dbl(x, sd)
-  cargas_x <- t_vec*sqrt(val) #cargas de cada una de las variables
-  peso_x <- cargas_x/val[1] #peso de cada una de las variables
-
-  #en algunas ocaciones, por una razón desconocida, los signos de las cargas se voltean
-  # si todas están en negativo, cambiar a positivo
-  # PENDIENTE revisar ....
-  if(all(cargas_x[1, ] < 0)) {cargas_x <- cargas_x*-1; peso_x <- peso_x*-1}
+  #calculamos varianza (val), cargas (l), pesos (w)
+  val <- ee$values
+  val_sq <- sqrt(val) #desviacion
+  l <- ee$vectors %*% diag(val_sq)
+  w <- ee$vectors %*% diag(1/val_sq)
 
   if(puntajes == TRUE){
-    para_pegar <- rep(1, nrow(x))
-    for(j in 1:length(x)){
-      temp <- (t(t(x) - media_x)[, j]*peso_x[1, j])/sd_x[j]
-      para_pegar <- cbind(para_pegar, temp)
-    }
-    indice1 <- rowSums(para_pegar[, -1])
+    z <- as.matrix(scale(x)) # datos estandarizados y matrix
+    s <- z %*% l # datos estandarizados por sus cargas
+    s <- scale(s)
   }
 
-  cargas <- data.frame(Item = names(x), Pesos = peso_x[1, ], Cargas = cargas_x[1, ])
+  cargas <- data.frame(Item = names(x), Pesos = w[, 1], Cargas = l[, 1])
   vr <- c("Pesos", "Cargas")
-  cargas[vr] <- apply(cargas[vr], 2, function(x) round(x, 3))
-  varex <- round(val[1]/sum(val)*100, 2)
+  cargas[vr] <- apply(cargas[vr], 2, function(x) format(round(x, 3), decimal.mark = ","))
+  varex <- format(round(val[1]/sum(val)*100, 2), decimal.mark = ",")
 
   if(puntajes == TRUE){
-    return(list(puntajes = indice1, indicadores = varex, cargas = cargas, confiabilidad = confiabilidad))}
+    return(list(puntajes = s[, 1], indicadores = varex, cargas = cargas, confiabilidad = alpha))}
   else {
-    return(list(indicadores = varex, cargas = cargas, confiabilidad = confiabilidad))}
+    return(list(indicadores = varex, cargas = cargas, confiabilidad = alpha))}
+
+}
+
+pca_1 <- function(x){
+  # para inspeccionar datos asociados al PCA
+  # aplica correlacion policorica
+
+  ee <- eigen(psych::polychoric(x)$rho, symmetric = FALSE)
+  val <- ee$values #varianza
+  l <- ee$vectors %*% diag(sqrt(val)) #cargas
+  cargas <- data.frame(Item = names(x), Cargas = l[, 1])
+  varex <- val[1]/sum(val)
+  return(list(cargas = cargas, varex = varex))
 
 }
 
 
-#devuelve puntajes e insumos para el reporte de las escalas, segun pca o cfa
 reporte_insumos <- function(data, tipo, model_lavaan, puntajes = TRUE){
+
+  #devuelve puntajes e insumos para el reporte de las escalas, segun pca o cfa
 
   data2 <- mutate(data, across(everything(), as.numeric))
 
@@ -349,8 +263,9 @@ reporte_insumos <- function(data, tipo, model_lavaan, puntajes = TRUE){
 
 }
 
+#******************************************************************
 
-#*************************************************************************************************************
+# OTRAS FUNCIONES:
 
 # asigna_label -----
 
@@ -705,42 +620,5 @@ calcula_nse <- function(data, ise){
 #ggplot(bd1, aes(x = NSE, y = ISE)) +
 #  geom_jitter()
 
-
-# ***********************************************************
-
-tabla_freq_dplyr <- function(data, x, peso = NULL, na = NULL, compara = NULL){
-
-  if(!is.null(peso)){peso_s <- dplyr::sym(peso)}
-  x_s <- dplyr::sym(x)
-
-  data2 <- data %>%
-    {if(!is.null(peso)) count(., {{x_s}}, wt = {{peso_s}}) else count(., {{x_s}})} %>%
-    {if(is.null(na)) filter(., !is.na({{x_s}})) else .} %>%
-    mutate(prop = round(prop.table(n)*100, 1))
-
-  names(data2)[names(data2) == x] <- "opcion"
-
-  if(is_grouped_df(data) & !is.null(compara)){ #util para comparar los %
-    data2 <- pivot_wider(data2, -n, names_from = names(group_keys(data)), values_from = prop)
-  }
-
-  return(data2)
-
-}
-
-tabla_freq_columnas_dplyr <- function(data, nomvar, peso = NULL, starts = NULL, na = NULL){
-
-  if(!is.null(starts)){
-    nom <- names(data[, grep(paste0("^", nomvar), names(data), value = TRUE)])
-    names(nom) <- nom
-  }else{
-    nom <- nomvar
-    names(nom) <- nom
-  }
-
-  df2 <- lapply(nom, function(x) tabla_freq_dplyr(data, x, peso = peso, na = na))
-  dplyr::bind_rows(df2, .id = "var")
-
-}
 
 
