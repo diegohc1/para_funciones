@@ -1,24 +1,24 @@
 # *********************************************************************************************
 # para aplicar algunos ejemplos
-nn <- 100000
-
-df <- data.frame(
-   p01 = sample(c("a", "b"), nn, replace = T),
-   p02_01 = sample(c("a", "b", "c"), nn, replace = T),
-   p02_02 = sample(c("a", "b", "c"), nn, replace = T),
-   p02_03 = sample(c("a", "b", "c"), nn, replace = T),
-   gestion = sample(c("Estatal", "No estatal"), nn, replace = T),
-   sexo = sample(c("Hombre", "Mujer"), nn, replace = T),
-   area = sample(c("Urbano", "Rural"), nn, replace = T),
-   medida = runif(nn, min = 450, max = 650),
-   peso = sample(c(0.9, 1, 1.1, 1.2, 1.3, 1.5, 1.6, 1.7), nn, replace = T))
-
-df$p01 <- as.factor(df$p01)
-df$p02_01 <- as.factor(df$p02_01)
-df$p02_02 <- as.factor(df$p02_02)
-df$p02_03 <- as.factor(df$p02_03)
-df$gestion <- as.factor(df$gestion)
-df$sexo <- as.factor(df$sexo)
+# nn <- 100000
+#
+# df <- data.frame(
+#    p01 = sample(c("a", "b"), nn, replace = T),
+#    p02_01 = sample(c("a", "b", "c"), nn, replace = T),
+#    p02_02 = sample(c("a", "b", "c"), nn, replace = T),
+#    p02_03 = sample(c("a", "b", "c"), nn, replace = T),
+#    gestion = sample(c("Estatal", "No estatal"), nn, replace = T),
+#    sexo = sample(c("Hombre", "Mujer"), nn, replace = T),
+#    area = sample(c("Urbano", "Rural"), nn, replace = T),
+#    medida = runif(nn, min = 450, max = 650),
+#    peso = sample(c(0.9, 1, 1.1, 1.2, 1.3, 1.5, 1.6, 1.7), nn, replace = T))
+#
+# df$p01 <- as.factor(df$p01)
+# df$p02_01 <- as.factor(df$p02_01)
+# df$p02_02 <- as.factor(df$p02_02)
+# df$p02_03 <- as.factor(df$p02_03)
+# df$gestion <- as.factor(df$gestion)
+# df$sexo <- as.factor(df$sexo)
 # ********************************************************************************************
 
 # funciones:
