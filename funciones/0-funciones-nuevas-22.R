@@ -235,10 +235,10 @@ pca_umc_reporte <- function(x, corr = NULL, puntajes = TRUE){
 pca_1 <- function(x){
   # para inspeccionar datos asociados al PCA
   # aplica correlacion policorica
-
   ee <- eigen(psych::polychoric(x)$rho, symmetric = FALSE)
   val <- ee$values #varianza
   l <- ee$vectors %*% diag(sqrt(val)) #cargas
+  if(all(l[1, ] < 0)) {l[1, ] <- l[1, ]*-1}
   cargas <- data.frame(Item = names(x), Cargas = l[, 1])
   varex <- val[1]/sum(val)
   return(list(cargas = cargas, varex = varex))
