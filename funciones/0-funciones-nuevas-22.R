@@ -245,6 +245,134 @@ pca_1 <- function(x){
 
 }
 
+cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE){
+
+  mod1 <- cfa(model_lavaan, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
+
+  if(recursivo){
+
+    indi <- lavaan::fitmeasures(mod1,  c("cfi", "tli", "srmr", "rmsea"))
+    cargafac <- subset(lavaan::parameterEstimates(mod1), op == "=~")
+
+
+    if(
+      any(c(purrr::map_lgl(indi[c("cfi", "tli")], ~.x < 0.95),
+            purrr::map_lgl(indi[c("srmr", "rmsea")], ~.x > 0.10)))
+    ){
+
+      indi_nueva = indi
+      cargafac_nueva = cargafac
+
+      repeat{
+        if(nrow(cargafac_nueva) <= 4){break} # si son 4 o menos items, pará
+
+        if(any(c(purrr::map_lgl(indi_nueva[c("cfi", "tli")], ~.x < 0.95),
+                 purrr::map_lgl(indi_nueva[c("srmr", "rmsea")], ~.x > 0.10)))){
+
+          # identificamos items
+          if(nrow(filter(cargafac_nueva, est < 0.4)) == 0){ # si no hay items con cargas menores a 0.4, identificamos el menor
+            eliminar = filter(cargafac_nueva, est == min(est))$rhs
+          }else{
+            eliminar = filter(cargafac_nueva, est < 0.4)$rhs # identificamos items con cargas menores a 0.4
+          }
+
+          cargafac_nueva = filter(cargafac_nueva, !rhs %in% all_of(eliminar)) # nuevo modelo
+
+          modstring <- split(cargafac_nueva, cargafac_nueva$lhs) %>%
+            map(~paste(pull(.x, rhs), collapse = "+")) %>%
+            imap(~paste(.y, .x, sep = '=~')) %>%
+            paste(collapse = "\n")
+
+          mod2 <- cfa(modstring, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
+
+        }else{break} # paramos
+      }
+
+      cfa_inicial <- reporte_lavaan(mod1, puntajes = FALSE)
+      cfa_sugerido <- reporte_lavaan(mod2, puntajes = puntajes)
+
+      return(list(cfa_inicial = cfa_inicial,
+                  cfa_sugerido = cfa_sugerido))
+
+    }else{
+
+      cfa_inicial <- reporte_lavaan(mod1, puntajes = puntajes)
+      return(cfa_inicial)
+
+    }
+
+  }
+
+  cfa_inicial <- reporte_lavaan(mod1, puntajes = puntajes)
+  return(cfa_inicial)
+
+
+}
+
+pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
+
+  pca_uno <- pca_1(data)
+
+  if(recursivo){
+
+    indi <- pca_uno$varex
+    cargafac <- pca_uno$cargas
+
+    if(indi < .50){
+
+      indi_nueva = indi
+      cargafac_nueva = cargafac
+
+      repeat{
+        if(nrow(cargafac_nueva) <= 4){break} # si son 4 o menos items, pará
+
+        if(indi < .50){
+
+          # identificamos items
+          if(nrow(filter(cargafac_nueva, abs(Cargas) < 0.4)) == 0){ # si no hay items con cargas menores a 0.4, identificamos el menor
+            eliminar = filter(cargafac_nueva, Cargas == min(abs(Cargas)))$Item
+          }else{
+            eliminar = filter(cargafac_nueva, abs(Cargas) < 0.4)$Item # identificamos items con cargas menores a 0.4
+          }
+
+          # retiramos las columnas y nuevo modelo
+          data2 <- data[, !(names(data) %in% eliminar)]
+          pca_dos <- pca_1(drop_na(data2))
+          indi <- pca_dos$varex
+          cargafac_nueva <- pca_dos$cargas
+
+        }else{break} # paramos
+      }
+
+      pca_inicial <- pca_umc_reporte_b(data, corr = "poly", puntajes = FALSE)
+      pca_sugerido <- pca_umc_reporte_b(data2, corr = "poly", puntajes = puntajes)
+
+      return(list(pca_inicial = pca_inicial,
+                  pca_sugerido = pca_sugerido))
+
+    }else{
+
+      pca_inicial <- pca_umc_reporte_b(data, corr = "poly", puntajes = puntajes)
+      return(pca_inicial)
+
+    }
+
+  }
+
+  pca_inicial <- pca_umc_reporte_b(data, corr = "poly", puntajes = puntajes)
+  return(pca_inicial)
+
+
+}
+
+
+
+
+
+
+
+
+
 
 reporte_insumos <- function(data, tipo, model_lavaan, puntajes = TRUE){
 
@@ -619,6 +747,7 @@ calcula_nse <- function(data, ise){
 #library(ggplot2)
 #ggplot(bd1, aes(x = NSE, y = ISE)) +
 #  geom_jitter()
+
 
 
 
