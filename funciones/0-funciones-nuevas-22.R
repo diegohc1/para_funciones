@@ -65,6 +65,8 @@ tabla_freq_dplyr <- function(data, x, peso = NULL, na = NULL, compara = NULL){
   #   group_by(gestion) %>%
   #   tabla_freq_dplyr("p01")
 
+  if(!require(dplyr)) stop("'dplyr' debe estar instalado")
+
   if(!is.null(peso)){peso_s <- dplyr::sym(peso)}
   if(!is.null(peso)){
     if(!sum(is.na(data[[peso]])) == 0) stop("La variable de pesos tiene missing")
@@ -326,7 +328,7 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
       repeat{
         if(nrow(cargafac_nueva) <= 4){break} # si son 4 o menos items, pará
 
-        if(indi < .50){
+        if(indi_nueva < .50){
 
           # identificamos items
           if(nrow(filter(cargafac_nueva, abs(Cargas) < 0.4)) == 0){ # si no hay items con cargas menores a 0.4, identificamos el menor
@@ -336,9 +338,9 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
           }
 
           # retiramos las columnas y nuevo modelo
-          data2 <- data[, !(names(data) %in% eliminar)]
+          data2 <- data2[, !(names(data2) %in% eliminar)]
           pca_dos <- pca_1(drop_na(data2))
-          indi <- pca_dos$varex
+          indi_nueva <- pca_dos$varex
           cargafac_nueva <- pca_dos$cargas
 
         }else{break} # paramos
