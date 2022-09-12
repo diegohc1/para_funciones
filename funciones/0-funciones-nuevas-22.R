@@ -343,6 +343,7 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
       cargafac_nueva = cargafac
       data2 = data
 
+
       repeat{
         if(nrow(cargafac_nueva) <= 4){break} # si son 4 o menos items, pará
 
