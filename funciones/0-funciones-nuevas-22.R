@@ -216,6 +216,8 @@ pca_umc_reporte <- function(x, corr = NULL, puntajes = TRUE){
   l <- ee$vectors %*% diag(val_sq)
   w <- ee$vectors %*% diag(1/val_sq)
 
+  if(all(l[, 1] < 0)) {l[, 1] <- l[, 1]*-1; w[, 1] <- w[, 1]*-1} # ¿por que? U_U
+
   if(puntajes == TRUE){
     z <- as.matrix(scale(x)) # datos estandarizados y matrix
     s <- z %*% l # datos estandarizados por sus cargas
@@ -311,6 +313,21 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE)
 
 }
 
+
+acomoda_string_lavaan <- function(data_preg){
+  if(length(unique(data_preg$Cod_indice2)) == 1){
+    mm <- paste(unique(data_preg$Cod_indice), paste(data_preg$cod_preg, collapse = '+'), sep = '=~')
+
+  }else{
+    mm <- split(data_preg, data_preg$Cod_indice2) %>%
+      map(~paste(pull(.x, cod_preg), collapse = "+")) %>%
+      imap(~paste(.y, .x, sep = '=~')) %>%
+      paste(collapse = "\n")
+  }
+  return(mm)
+}
+
+
 pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
 
   pca_uno <- pca_1(data)
@@ -324,6 +341,7 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
 
       indi_nueva = indi
       cargafac_nueva = cargafac
+      data2 = data
 
       repeat{
         if(nrow(cargafac_nueva) <= 4){break} # si son 4 o menos items, pará
@@ -338,8 +356,8 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
           }
 
           # retiramos las columnas y nuevo modelo
-          data2 <- data2[, !(names(data2) %in% eliminar)]
-          pca_dos <- pca_1(drop_na(data2))
+          data2 <- data[, !(names(data) %in% eliminar)]
+          pca_dos <- pca_1(data2)
           indi_nueva <- pca_dos$varex
           cargafac_nueva <- pca_dos$cargas
 
