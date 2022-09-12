@@ -344,33 +344,26 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
         }else{break} # paramos
       }
 
-      pca_inicial <- pca_umc_reporte_b(data, corr = "poly", puntajes = FALSE)
-      pca_sugerido <- pca_umc_reporte_b(data2, corr = "poly", puntajes = puntajes)
+      pca_inicial <- pca_umc_reporte(data, corr = "poly", puntajes = FALSE)
+      pca_sugerido <- pca_umc_reporte(data2, corr = "poly", puntajes = puntajes)
 
       return(list(pca_inicial = pca_inicial,
                   pca_sugerido = pca_sugerido))
 
     }else{
 
-      pca_inicial <- pca_umc_reporte_b(data, corr = "poly", puntajes = puntajes)
+      pca_inicial <- pca_umc_reporte(data, corr = "poly", puntajes = puntajes)
       return(pca_inicial)
 
     }
 
   }
 
-  pca_inicial <- pca_umc_reporte_b(data, corr = "poly", puntajes = puntajes)
+  pca_inicial <- pca_umc_reporte(data, corr = "poly", puntajes = puntajes)
   return(pca_inicial)
 
 
 }
-
-
-
-
-
-
-
 
 
 
