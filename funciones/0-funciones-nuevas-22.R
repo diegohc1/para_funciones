@@ -356,7 +356,7 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
           }
 
           # retiramos las columnas y nuevo modelo
-          data2 <- data[, !(names(data) %in% eliminar)]
+          data2 <- data2[, !(names(data2) %in% eliminar)]
           pca_dos <- pca_1(data2)
           indi_nueva <- pca_dos$varex
           cargafac_nueva <- pca_dos$cargas
