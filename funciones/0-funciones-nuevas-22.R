@@ -383,7 +383,7 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
         map(~select(.x, 1, 3)) %>%
         reduce(~left_join(.x, .y, by = c("Item"), suffix = c(".inicial", ".sugerido")))
 
-      indicadores <- map_df(resultados1, "indicadores")
+      indicadores <- map_df(lista_pca, "indicadores")
 
       return(list(cargas = cargas, indicadores = indicadores))
 
