@@ -295,8 +295,17 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE)
       cfa_inicial <- reporte_lavaan(mod1, puntajes = FALSE)
       cfa_sugerido <- reporte_lavaan(mod2, puntajes = puntajes)
 
-      return(list(cfa_inicial = cfa_inicial,
-                  cfa_sugerido = cfa_sugerido))
+      lista_cfa <- list(cfa_inicial = cfa_inicial, cfa_sugerido = cfa_sugerido)
+
+      cargas <- map(lista_cfa, "cargas") %>%
+        map(~select(.x, -4, -5)) %>%
+        reduce(~left_join(.x, .y, by = c("Escala", "Item"), suffix = c(".inicial", ".sugerido")))
+
+      indicadores <- map(lista_cfa, "indicadores") %>%
+        map(~select(.x, -3)) %>%
+        reduce(~left_join(.x, .y, by = c("Indicadores"), suffix = c(".inicial", ".sugerido")))
+
+      return(list(cargas = cargas, indicadores = indicadores))
 
     }else{
 
@@ -368,8 +377,15 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
       pca_inicial <- pca_umc_reporte(data, corr = "poly", puntajes = FALSE)
       pca_sugerido <- pca_umc_reporte(data2, corr = "poly", puntajes = puntajes)
 
-      return(list(pca_inicial = pca_inicial,
-                  pca_sugerido = pca_sugerido))
+      lista_pca <- list(pca_inicial = pca_inicial, pca_sugerido = pca_sugerido)
+
+      cargas <- map(lista_pca, "cargas") %>%
+        map(~select(.x, 1, 3)) %>%
+        reduce(~left_join(.x, .y, by = c("Item"), suffix = c(".inicial", ".sugerido")))
+
+      indicadores <- map_df(resultados1, "indicadores")
+
+      return(list(cargas = cargas, indicadores = indicadores))
 
     }else{
 
