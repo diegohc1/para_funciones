@@ -268,7 +268,12 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE)
       cargafac_nueva = cargafac
 
       repeat{
-        if(nrow(cargafac_nueva) <= 4){break} # si son 4 o menos items, pará
+        if(length(lavNames(mod1, type = "lv")) == 1){
+          if(nrow(cargafac_nueva) <= 4){break} # 1 var latente: si son 4 o menos items, pará
+        }else{
+          # 2 var latente: si son 3 o menos items en alguno, pará
+          if(any(purrr::map_lgl(lapply(split(cargafac_nueva, cargafac_nueva$lhs), nrow), ~.x <= 3))){break}
+        }
 
         if(any(c(purrr::map_lgl(indi_nueva[c("cfi", "tli")], ~.x < 0.95),
                  purrr::map_lgl(indi_nueva[c("srmr", "rmsea")], ~.x > 0.10)))){
