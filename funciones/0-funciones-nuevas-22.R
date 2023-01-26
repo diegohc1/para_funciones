@@ -755,7 +755,7 @@ calcula_nse <- function(data, ise, w = NULL){
   if(is.null(w)){
     cortes <- quantile(isevec, c(.35, .60, .85), na.rm = TRUE)
   } else {
-    cortes <- Hmisc::wtd.quantile(isevec, probs = c(.35, .60, .85), weights = w)
+    cortes <- Hmisc::wtd.quantile(isevec, probs = c(.35, .60, .85), weights = data[[w]])
   }
 
   lev <- c("NSE alto", "NSE medio", "NSE bajo", "NSE muy bajo")
@@ -773,16 +773,18 @@ calcula_nse <- function(data, ise, w = NULL){
 
 }
 
-# ejemplo:
+# Hmisc::wtd.quantile(bd$ISE, probs = c(.35, .60, .85), weights = bd$peso)
+
+#ejemplo:
 #simulamos
-# bd <- data.frame(ISE = rnorm(1000))
-#
-# #aplicamos la funcion
-# bd1 <- calcula_nse(bd, ISE)
-# head(bd1)
-#
-# #comprobamos que sean  los cortes
-# # alto (15%) medio (25%) bajo (25%) muy bajo (35%)
+#bd <- data.frame(ISE = rnorm(1000), peso = sample(c(1, 1.1, 1.2, 1.3, 1.4), 1000, replace = TRUE))
+
+#aplicamos la funcion
+#bd1 <- calcula_nse(bd, ISE, w = "peso")
+#head(bd1)
+
+#comprobamos que sean  los cortes
+# alto (15%) medio (25%) bajo (25%) muy bajo (35%)
 # prop.table(table(bd1$NSE))
 
 #library(ggplot2)
