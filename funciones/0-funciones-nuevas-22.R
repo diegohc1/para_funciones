@@ -746,12 +746,18 @@ pairwise.svyttest <- function(dm, var, g){
 ## data: base de datos
 ## ise: columna que contiene el puntaje del ise
 
-calcula_nse <- function(data, ise){
+calcula_nse <- function(data, ise, w = NULL){
 
   if(!require(dplyr)) stop("'dplyr' debe estar instalado")
 
   isevec <- pull(data, {{ise}})
-  cortes <- quantile(isevec, c(.35, .60, .85), na.rm = TRUE)
+
+  if(is.null(w)){
+    cortes <- quantile(isevec, c(.35, .60, .85), na.rm = TRUE)
+  } else {
+    cortes <- Hmisc::wtd.quantile(isevec, probs = c(.35, .60, .85), weights = w)
+  }
+
   lev <- c("NSE alto", "NSE medio", "NSE bajo", "NSE muy bajo")
 
   data2 <- data %>%
@@ -789,33 +795,33 @@ calcula_nse <- function(data, ise){
 # Función para sacar proporciones (funciona con una o con dos variables y múltiples veces) ----
 
 proporcion_estrato2=function(data, var, var2=NULL,FUN=proporcion_estrato,...){
-  
+
   proporcion_estrato <- function(data, grupo1, grupo2,label=NULL,peso=NULL,size_h=NULL,diseno=NULL){
     #Estimación de la proporción no pesada
     if (missing(peso)){
-      b=data %>% 
-        group_by({{grupo1}},{{grupo2}}) %>% 
-        summarise(n=n()) %>% 
-        drop_na() %>% 
+      b=data %>%
+        group_by({{grupo1}},{{grupo2}}) %>%
+        summarise(n=n()) %>%
+        drop_na() %>%
         mutate(freq=round((n/sum(n)*100),2))
     }else{#Estimación de la proporción pesada
-      b=data %>% 
-        group_by({{grupo1}},{{grupo2}}) %>% 
-        summarise(n=sum({{peso}},na.rm=T)) %>% 
-        drop_na() %>% 
-        mutate(freq=round((n/sum(n)*100),2))  
+      b=data %>%
+        group_by({{grupo1}},{{grupo2}}) %>%
+        summarise(n=sum({{peso}},na.rm=T)) %>%
+        drop_na() %>%
+        mutate(freq=round((n/sum(n)*100),2))
     }
-    
+
     if(!missing(label)){
       if(Hmisc::label(data[[as_label(enquo(grupo2))]])=="") stop("Hay una columna o columnas que no tiene(n) label(s)")
-      
+
       c=as.data.frame(Hmisc::label(data[[as_label(enquo(grupo2))]])) %>%
         rename(label_opcion = 1)
-      
+
       b=cbind(b,c)
-      
+
     }
-    
+
     #Estimación de la h de cohen
     if(!missing(size_h)){
       group_ <- enquo(grupo1)
@@ -823,28 +829,28 @@ proporcion_estrato2=function(data, var, var2=NULL,FUN=proporcion_estrato,...){
                                                                         values_from = "freq") %>%
         ungroup() %>%
         mutate(h=abs(2*asin(sqrt(.[[2]]))-2*asin(sqrt(.[[3]]))))
-      
+
       b=left_join(b,h_size[,c(1,ncol(h_size))])
     }
-    
+
     #Estimación de la significancia
     if(!missing(diseno)){
       if(!is.list(diseno)) stop("Debes meter un diseño de acuerdo a los parámetros de survey")
       options(survey.lonely.psu = "certainty") #opcion de survey
       group_ <- enquo(grupo1)
-      # bd_design <- diseno  
+      # bd_design <- diseno
       labs <- enquo(grupo2)
-      bd_design <- svydesign(data = data, id = as.formula(diseno[[1]]), 
+      bd_design <- svydesign(data = data, id = as.formula(diseno[[1]]),
                              strata = as.formula(diseno[[2]]),
                              fpc = as.formula(diseno[[3]]), nest = TRUE, pps = "brewer")
       p_val=svychisq(as.formula(paste0("~",as_label(labs),"+",as_label(group_))),design=bd_design,na.rm=T,statistic="Chisq")$p.value
       b=cbind(b,p_val=p_val)
     }
-    
+
     return(b)
-    
+
   }
-  
+
   if(missing(var2)){
     purrr::map(var,function(x)
       FUN(data,grupo1=.data[[x]],...)) %>%
@@ -859,51 +865,51 @@ proporcion_estrato2=function(data, var, var2=NULL,FUN=proporcion_estrato,...){
       map_depth(2, ~rename(.x, estrato = 1,opcion=2)) %>% #nombre de la columna
       purrr::map(~pega_lista(.x, "grupo")) %>% pega_lista("medida") #juntamos todas las tablas
   }
-  
+
 }
 
 # Función para sacar múltiples significancias (funciona con una o con dos) ----
 
 post_proporcion_estrato2 <- function(data, var, var2,FUN=post_proporcion_estrato,...){
   post_proporcion_estrato <- function(data, grupo1, grupo2,label=NULL,peso=NULL,size_h=NULL,diseno=NULL){
-    
+
     nombres1=as.character(data %>% select({{grupo1}}) %>% distinct() %>% drop_na() %>% as_vector())
     nombres2=as.character(data %>% select({{grupo2}}) %>% distinct() %>% drop_na() %>% as_vector())
-    
+
     combo1=map(1:ncol(combn(nombres1,2)),~combn(nombres1,2)[,.x])
     combo2=map(1:ncol(combn(nombres2,2)),~combn(nombres2,2)[,.x])
-    
+
     gru1=map_chr(1:ncol(combn(nombres1,2)),~paste0(combn(nombres1,2)[,.x],collapse="_"))
     gru2=map_chr(1:ncol(combn(nombres2,2)),~paste0(combn(nombres2,2)[,.x],collapse="_"))
-    
-    
+
+
     if(length(nombres1)<=2&length(nombres2)<=2)
       stop("Los dos grupos que hay acá tienen solo dos categorías.
          Al menos uno de los grupos a comparar debe tener más de dos categorías")
     if(missing(diseno))
       stop("Debes colocar el diseño para sacar significancia")
-    
+
     group_ <- enquo(grupo1)
     labs <- enquo(grupo2)
-    
+
     if(length(nombres1)>2&length(nombres2)<3){
-      
+
       a=map(combo1,~data %>% filter({{grupo1}} %in% .x) %>%
               mutate(estrx=fct_drop({{grupo1}}))) %>%
         set_names(gru1) %>%
         map(~svydesign(data = .x, id = as.formula(diseno[[1]]),
                        strata = as.formula(diseno[[2]]),
                        fpc = as.formula(diseno[[3]]), nest = TRUE, pps = "brewer"))
-      
+
       f=a %>% map(~svychisq(as.formula(paste0("~",as_label(labs),"+estrx")),
                             design=.x,na.rm=T,statistic="Chisq")$p.value) %>%
         map(~as.data.frame(.x)) %>%
         pega_lista("comparacion1") %>% bind_cols("comparacion2"=gru2)
-      
+
       rownames(f)=NULL
       colnames(f)=c("p_val","grupo_comparacion1","grupo_comparacion2")
       f$p_val=round(f$p_val,5)
-      
+
     }else if(length(nombres1)<3&length(nombres2)>2){
       a=map(combo2,~data %>% filter({{grupo2}} %in% .x) %>%
               mutate(estrx=fct_drop({{grupo2}}))) %>%
@@ -911,48 +917,48 @@ post_proporcion_estrato2 <- function(data, var, var2,FUN=post_proporcion_estrato
         map(~svydesign(data = .x, id = as.formula(diseno[[1]]),
                        strata = as.formula(diseno[[2]]),
                        fpc = as.formula(diseno[[3]]), nest = TRUE, pps = "brewer"))
-      
+
       f=a %>% map(~svychisq(as.formula(paste0("~","estrx","+",as_label(group_))),
                             design=.x,na.rm=T,statistic="Chisq")$p.value) %>%
         map(~as.data.frame(.x)) %>%
         pega_lista("comparacion2") %>% bind_cols("comparacion1"=gru1)
-      
+
       rownames(f)=NULL
       colnames(f)=c("p_val","grupo_comparacion2","grupo_comparacion1")
       f$p_val=round(f$p_val,5)
     }else{
-      
+
       a=map(combo1,function(x)
         map(combo2,function(y)
           (data %>% filter({{grupo1}} %in% x,{{grupo2}} %in% y) %>%
              mutate(estrx1=fct_drop({{grupo1}}),
                     estrx2=fct_drop({{grupo2}}))))) %>%
-        set_names(gru1) %>% purrr::map(~set_names(.x, gru2)) %>% 
+        set_names(gru1) %>% purrr::map(~set_names(.x, gru2)) %>%
         map_depth(2,~svydesign(data = .x, id = as.formula(diseno[[1]]),
                                strata = as.formula(diseno[[2]]),
                                fpc = as.formula(diseno[[3]]), nest = TRUE, pps = "brewer"))
-      
+
       f=a %>% map_depth(2,~svychisq(as.formula(paste0("~","estrx2","+","estrx1")),
                                     design=.x,na.rm=T,statistic="Chisq")$p.value) %>%
         map_depth(2,~as.data.frame(.x)) %>%
         purrr::map(~pega_lista(.x, "comparacion2")) %>% pega_lista("comparacion1")
-      
+
       rownames(f)=NULL
       colnames(f)=c("p_val","grupo_comparacion2","grupo_comparacion1")
       f$p_val=round(f$p_val,5)
-      
+
     }
-    
+
     return(f)
   }
-  
+
   purrr::map(var,function(x)
     purrr::map(var2, function(y)
       post_proporcion_estrato(data,.data[[x]],.data[[y]],...))) %>%
     set_names(var) %>% purrr::map(~set_names(.x, var2)) %>% #nombres a las listas
     #map_depth(2, ~rename(.x, estrato = 1,opcion=2)) %>% #nombre de la columna
     purrr::map(~pega_lista(.x, "grupo2")) %>% pega_lista("grupo1") #juntamos todas las tablas
-  
+
 }
 
 
@@ -960,3 +966,12 @@ post_proporcion_estrato2 <- function(data, var, var2,FUN=post_proporcion_estrato
 #Ejemplo de diseño: dis = list(id="~cod_mod8+dni_est",
 #            strata= "~estrato",
 #            fpc="~pikIE+prob_est")
+
+
+# util para generar archivos de excel temporales
+show_in_excel <- function(.data){
+  tmp <- paste0(tempfile(), ".xlsx")
+  rio::export(.data, tmp)
+  browseURL(url = tmp)
+}
+
