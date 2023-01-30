@@ -253,73 +253,79 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE)
 
   mod1 <- cfa(model_lavaan, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
 
-  if(recursivo){
+  if(recursivo){ #inicio recurviso
 
     indi <- lavaan::fitmeasures(mod1,  c("cfi", "tli", "srmr", "rmsea"))
     cargafac <- subset(lavaan::parameterEstimates(mod1), op == "=~")
 
-
-    if(
-      any(c(purrr::map_lgl(indi[c("cfi", "tli")], ~.x < 0.95),
-            purrr::map_lgl(indi[c("srmr", "rmsea")], ~.x > 0.10)))
+    if( # verificar si cumple ciertas condiciones
+      all( length(lavNames(mod1, type = "lv")) == 1 && nrow(cargafac) > 4) ||
+      all(length(lavNames(mod1, type = "lv")) > 1 && any(purrr::map_lgl(lapply(split(cargafac, cargafac$lhs), nrow), ~.x > 3)))
     ){
 
-      indi_nueva = indi
-      cargafac_nueva = cargafac
+      if(
+        any(c(purrr::map_lgl(indi[c("cfi", "tli")], ~.x < 0.95),
+              purrr::map_lgl(indi[c("srmr", "rmsea")], ~.x > 0.10)))
+      ){
 
-      repeat{
-        if(length(lavNames(mod1, type = "lv")) == 1){
-          if(nrow(cargafac_nueva) <= 4){break} # 1 var latente: si son 4 o menos items, pará
-        }else{
-          # 2 var latente: si son 3 o menos items en alguno, pará
-          if(any(purrr::map_lgl(lapply(split(cargafac_nueva, cargafac_nueva$lhs), nrow), ~.x <= 3))){break}
-        }
+        indi_nueva = indi
+        cargafac_nueva = cargafac
 
-        if(any(c(purrr::map_lgl(indi_nueva[c("cfi", "tli")], ~.x < 0.95),
-                 purrr::map_lgl(indi_nueva[c("srmr", "rmsea")], ~.x > 0.10)))){
-
-          # identificamos items
-          if(nrow(filter(cargafac_nueva, est < 0.4)) == 0){ # si no hay items con cargas menores a 0.4, identificamos el menor
-            eliminar = filter(cargafac_nueva, est == min(est))$rhs
+        repeat{
+          if(length(lavNames(mod1, type = "lv")) == 1){
+            if(nrow(cargafac_nueva) <= 4){break} # 1 var latente: si son 4 o menos items, pará
           }else{
-            eliminar = filter(cargafac_nueva, est < 0.4)$rhs # identificamos items con cargas menores a 0.4
+            # 2 var latente: si son 3 o menos items en alguno, pará
+            if(any(purrr::map_lgl(lapply(split(cargafac_nueva, cargafac_nueva$lhs), nrow), ~.x <= 3))){break}
           }
 
-          cargafac_nueva = filter(cargafac_nueva, !rhs %in% all_of(eliminar)) # nuevo modelo
+          if(any(c(purrr::map_lgl(indi_nueva[c("cfi", "tli")], ~.x < 0.95),
+                   purrr::map_lgl(indi_nueva[c("srmr", "rmsea")], ~.x > 0.10)))){
 
-          modstring <- split(cargafac_nueva, cargafac_nueva$lhs) %>%
-            map(~paste(pull(.x, rhs), collapse = "+")) %>%
-            imap(~paste(.y, .x, sep = '=~')) %>%
-            paste(collapse = "\n")
+            # identificamos items
+            if(nrow(filter(cargafac_nueva, est < 0.4)) == 0){ # si no hay items con cargas menores a 0.4, identificamos el menor
+              eliminar = filter(cargafac_nueva, est == min(est))$rhs
+            }else{
+              eliminar = filter(cargafac_nueva, est < 0.4)$rhs # identificamos items con cargas menores a 0.4
+            }
 
-          mod2 <- cfa(modstring, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
+            cargafac_nueva = filter(cargafac_nueva, !rhs %in% all_of(eliminar)) # nuevo modelo
 
-        }else{break} # paramos
+            modstring <- split(cargafac_nueva, cargafac_nueva$lhs) %>%
+              map(~paste(pull(.x, rhs), collapse = "+")) %>%
+              imap(~paste(.y, .x, sep = '=~')) %>%
+              paste(collapse = "\n")
+
+            mod2 <- cfa(modstring, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
+
+          }else{break} # paramos
+        }
+
+        cfa_inicial <- reporte_lavaan(mod1, puntajes = FALSE)
+        cfa_sugerido <- reporte_lavaan(mod2, puntajes = puntajes)
+
+        lista_cfa <- list(cfa_inicial = cfa_inicial, cfa_sugerido = cfa_sugerido)
+
+        cargas <- map(lista_cfa, "cargas") %>%
+          map(~select(.x, -4, -5)) %>%
+          reduce(~left_join(.x, .y, by = c("Escala", "Item"), suffix = c(".inicial", ".sugerido")))
+
+        indicadores <- map(lista_cfa, "indicadores") %>%
+          map(~select(.x, -3)) %>%
+          reduce(~left_join(.x, .y, by = c("Indicadores"), suffix = c(".inicial", ".sugerido")))
+
+        return(list(cargas = cargas, indicadores = indicadores))
+
+      }else{
+
+        cfa_inicial <- reporte_lavaan(mod1, puntajes = puntajes)
+        return(cfa_inicial)
+
       }
-
-      cfa_inicial <- reporte_lavaan(mod1, puntajes = FALSE)
-      cfa_sugerido <- reporte_lavaan(mod2, puntajes = puntajes)
-
-      lista_cfa <- list(cfa_inicial = cfa_inicial, cfa_sugerido = cfa_sugerido)
-
-      cargas <- map(lista_cfa, "cargas") %>%
-        map(~select(.x, -4, -5)) %>%
-        reduce(~left_join(.x, .y, by = c("Escala", "Item"), suffix = c(".inicial", ".sugerido")))
-
-      indicadores <- map(lista_cfa, "indicadores") %>%
-        map(~select(.x, -3)) %>%
-        reduce(~left_join(.x, .y, by = c("Indicadores"), suffix = c(".inicial", ".sugerido")))
-
-      return(list(cargas = cargas, indicadores = indicadores))
-
-    }else{
-
-      cfa_inicial <- reporte_lavaan(mod1, puntajes = puntajes)
-      return(cfa_inicial)
 
     }
 
-  }
+  } # fin recursivo
 
   cfa_inicial <- reporte_lavaan(mod1, puntajes = puntajes)
   return(cfa_inicial)
