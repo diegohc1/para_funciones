@@ -260,7 +260,7 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE)
 
     if( # verificar si cumple ciertas condiciones
       all( length(lavNames(mod1, type = "lv")) == 1 && nrow(cargafac) > 4) ||
-      all(length(lavNames(mod1, type = "lv")) > 1 && any(purrr::map_lgl(lapply(split(cargafac, cargafac$lhs), nrow), ~.x > 3)))
+      all(length(lavNames(mod1, type = "lv")) > 1 && all(purrr::map_lgl(lapply(split(cargafac, cargafac$lhs), nrow), ~.x > 3)))
     ){
 
       if(
