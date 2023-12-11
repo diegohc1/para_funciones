@@ -158,7 +158,7 @@ reporte_lavaan <- function(model_cfa_lavaan, puntajes = TRUE){
 }
 
 
-invarianza1 <- unction(m, data, grupo){
+invarianza1 <- function(m, data, grupo){
   
   #m = string del modelo, "constructo=~item1+item2+..."
   #data = base de datos
