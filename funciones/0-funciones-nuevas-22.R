@@ -158,19 +158,40 @@ reporte_lavaan <- function(model_cfa_lavaan, puntajes = TRUE){
 }
 
 
-invarianza1 <- function(m, data, grupo){
-
+invarianza1 <- unction(m, data, grupo){
+  
   #m = string del modelo, "constructo=~item1+item2+..."
   #data = base de datos
   #grupo = grupo, "gestion2", "area", "sexo" o también puede ser c("gestion2","area)
-
-  cfa_WLS <- function(...) cfa(estimator = "WLSMV", ...)
-
-  m_pool <- map(grupo,~cfa_WLS(mm, data)) %>% set_names(grupo)
-  m_conf <- map(grupo,~cfa_WLS(mm, data, group = .x)) %>% set_names(grupo)
-  m_metr <- map(grupo,~cfa_WLS(mm, data, group = .x, group.equal = c("loadings"))) %>% set_names(grupo)
-  m_esca <- map(grupo,~cfa_WLS(mm, data, group = .x, group.equal = c("loadings", "intercepts"))) %>% set_names(grupo)
-
+  
+  cfa_WLS <- function(...) cfa(ordered=T, ...)
+  
+  m_pool <- map(grupo,~cfa_WLS(m, data)) %>% set_names(grupo)
+  m_conf <- map(grupo,~cfa_WLS(m, data, group = .x)) %>% set_names(grupo)
+  m_metr <- map(grupo,~cfa_WLS(m, data, group = .x, group.equal = c("loadings"))) %>% set_names(grupo)
+  m_esca <- map(grupo,~cfa_WLS(m, data, group = .x, group.equal = c("loadings", "intercepts"))) %>% set_names(grupo)
+  
+  chi=data.frame(lavTestLRT(m_conf[[1]],m_metr[[1]],m_esca[[1]])) %>% 
+    rownames_to_column("modelo") %>% 
+    rename(pchisq=8) %>% 
+    mutate(pchisq=round(pchisq,3),
+           Chisq=round(Chisq,3)) %>% 
+    mutate(tip_inv=str_sub(modelo,1,6)) %>% 
+    select(tip_inv,chisq=Chisq,pchisq) %>%
+    pivot_longer(cols = c("chisq","pchisq"),
+                 names_to = "indicadores",values_to = "val") %>% drop_na() %>%  
+    pivot_wider(names_from=c(indicadores,tip_inv),
+                values_from = c(val)) %>%
+    select(m_conf=chisq_m_conf, 
+           m_metr=chisq_m_metr,
+           m_esca=chisq_m_esca,
+           inv_metr=pchisq_m_metr,
+           inv_sca=pchisq_m_esca) %>% 
+    mutate(inv_metr_t=case_when(inv_metr>0.05~"cumple",TRUE~"no cumple"),
+           inv_sca_t=case_when(inv_sca>0.05~"cumple",TRUE~"no cumple"),
+           grupo=grupo,
+           indicadores="chiq")
+  
   map_df(lst(m_pool,m_conf, m_metr, m_esca),
          function(x) map_df(x,~fitMeasures(.x, c("cfi","tli","rmsea","srmr")),.id="grupo"),.id="tip_inv") %>%
     as_tibble() %>%
@@ -186,7 +207,8 @@ invarianza1 <- function(m, data, grupo){
       inv_sca_t = case_when(
         indicadores %in% c("cfi", "tli") & inv_sca <= 0.020 ~ "cumple",
         indicadores %in% c("rmsea", "srmr") & inv_sca <= 0.010 ~ "cumple",
-        TRUE~"no cumple"))
+        TRUE~"no cumple")) %>% 
+    bind_rows(chi)
 }
 
 
