@@ -1005,3 +1005,44 @@ show_in_excel <- function(.data){
   browseURL(url = tmp)
 }
 
+
+escalar_pesos_mlm <- function(data, cod_ie, wt, wj){
+  
+  # data: base de datos
+  # cod_ie: codigo escuela
+  # wt: peso total del estudiante
+  # wj: peso de la escuela 
+  
+  if (nrow(filter(data, is.na(wt))) > 0) 
+    stop("La variable de pesos tiene missing")
+  
+  data[["one"]] <- 1
+  
+  bw <- data %>%
+    ## method 2: normalized weights
+    mutate(w = {{wt}},
+           w_sq  = {{wt}}^2,
+           sum_w = ave(w, {{cod_ie}}, FUN = sum),
+           sum_wsq = ave(w_sq, {{cod_ie}}, FUN = sum),
+           wa1 = (w*sum_w)/sum_wsq,
+           wwa1 = wa1*{{wj}},
+           awww1  = ave(wwa1, one),
+           wa2 = {{wj}}/awww1) %>%
+    ## method 1: effective sample size
+    group_by({{cod_ie}}) %>% mutate(nj = n()) %>% ungroup() %>%
+    mutate(wb1 = w*nj/sum_w,
+           wwb1 = wb1*{{wj}},
+           awww2  = ave(wwb1, one),
+           wb2 = {{wj}}/awww2) %>%
+    select(wa1, wa2, wb1, wb2)
+  
+  return(bw)
+  
+  # usemos wb1 y wb2 para el multinivel
+  # en WeMix, colocar cWeights = TRUE
+  
+}
+
+
+
+               
