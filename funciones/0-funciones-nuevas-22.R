@@ -351,8 +351,10 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE,
           select(-3) %>%
           rename('Valores.inicial' = Valores) %>%
           mutate(Valores.sugerido = NA) 
+
+        return(list(cargas = cfa_inicial$cargas, indicadores = cfa_inicial$indicadores))
         
-        return(cfa_inicial)
+        #return(cfa_inicial)
 
       }
 
