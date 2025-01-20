@@ -271,9 +271,9 @@ pca_1 <- function(x){
 
 }
 
-cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE){
+cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE, missing = "pairwise"){
 
-  mod1 <- cfa(model_lavaan, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
+  mod1 <- cfa(model_lavaan, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV", missing = missing)
 
   if(recursivo){ #inicio recurviso
 
@@ -318,7 +318,7 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE)
               imap(~paste(.y, .x, sep = '=~')) %>%
               paste(collapse = "\n")
 
-            mod2 <- cfa(modstring, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV")
+            mod2 <- cfa(modstring, data = data, ordered = TRUE, mimic = "Mplus", estimator = "WLSMV", missing = missing)
 
           }else{break} # paramos
         }
