@@ -341,6 +341,17 @@ cfa_recursivo <- function(data, model_lavaan, recursivo = TRUE, puntajes = TRUE,
       }else{
 
         cfa_inicial <- reporte_lavaan(mod1, puntajes = puntajes)
+
+        cfa_inicial$cargas <- cfa_inicial$cargas %>% 
+          select(-4, -5) %>%
+          rename('Est.inicial' = Est) %>%
+          mutate(Est.sugerido = NA) 
+        
+        cfa_inicial$indicadores <- cfa_inicial$indicadores %>% 
+          select(-3) %>%
+          rename('Valores.inicial' = Valores) %>%
+          mutate(Valores.sugerido = NA) 
+        
         return(cfa_inicial)
 
       }
