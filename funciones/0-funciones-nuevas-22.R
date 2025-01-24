@@ -450,7 +450,14 @@ pca_recursivo <- function(data, recursivo = TRUE, puntajes = TRUE){
     }else{
 
       pca_inicial <- pca_umc_reporte(data, corr = "poly", puntajes = puntajes)
-      return(pca_inicial)
+      
+      pca_inicial$cargas <- pca_inicial$cargas %>% 
+        select(-2) %>%
+        rename('Cargas.inicial' = Cargas) %>%
+        mutate(Cargas.sugerido = NA)
+      
+      pca_inicial$indicadores <- 
+        data.frame(pca_inicial = pca_inicial$indicadores, pca_sugerido = NA)
 
     }
 
