@@ -259,9 +259,16 @@ pca_umc_reporte <- function(x, corr = NULL, puntajes = TRUE){
 }
 
 pca_1 <- function(x){
-  # para inspeccionar datos asociados al PCA
+ # para inspeccionar datos asociados al PCA
   # aplica correlacion policorica
-  ee <- eigen(psych::polychoric(x)$rho, symmetric = FALSE)
+  
+  if(sum(sapply(x, function(xx) sum(is.na(xx)))) > 0) message("Hay NA en las columnas, se aplicó 'pairwise'")
+  
+  if(sum(sapply(x, function(xx) sum(is.na(xx)))) > 0){
+    ee <- eigen(as.data.frame(lavaan::lavCor(x, ordered = TRUE, missing = "pairwise")))
+  }
+  
+  ee <- eigen(as.data.frame(lavaan::lavCor(x), ordered = TRUE))
   val <- ee$values #varianza
   l <- ee$vectors %*% diag(sqrt(val)) #cargas
   if(all(l[, 1] < 0)) {l[, 1] <- l[, 1]*-1} # ¿por que? U_U
