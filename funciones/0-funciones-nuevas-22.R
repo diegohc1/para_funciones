@@ -222,14 +222,13 @@ pca_umc_reporte <- function(x, corr = NULL, puntajes = TRUE){
   #       correlacion policorica
   # puntajes: logical si es que se quiere puntajes
 
-  if(sum(sapply(x, function(xx) sum(is.na(xx)))) > 0) stop("Es preferible que no hayan NAs en las columnas =)")
-
+  if(sum(sapply(x, function(xx) sum(is.na(xx)))) > 0) message("Hay NAs en la columnas, se aplicó 'pairwise'")
+  
   if(is.null(corr)){
-    ee <- eigen(cor(x), symmetric = FALSE) # symmetric=FALSE previene cargas negativas [espero]
+    ee <- eigen(as.data.frame(lavaan::lavCor(x, missing = "pairwise")), symmetric = FALSE)
   }else{
-    cor_pol <- psych::polychoric(x)$rho
+    cor_pol <- as.data.frame(lavaan::lavCor(x, ordered = TRUE, missing = "pairwise"))
     ee <- eigen(cor_pol, symmetric = FALSE)
-    alpha <- psych::alpha(cor_pol, warnings = FALSE)$feldt$alpha[[1]] #Confiabilidad
   }
 
   #calculamos varianza (val), cargas (l), pesos (w)
@@ -252,9 +251,9 @@ pca_umc_reporte <- function(x, corr = NULL, puntajes = TRUE){
   varex <- format(round(val[1]/sum(val)*100, 2), decimal.mark = ",")
 
   if(puntajes == TRUE){
-    return(list(puntajes = s[, 1], indicadores = varex, cargas = cargas, confiabilidad = alpha))}
+    return(list(puntajes = s[, 1], indicadores = varex, cargas = cargas))}
   else {
-    return(list(indicadores = varex, cargas = cargas, confiabilidad = alpha))}
+    return(list(indicadores = varex, cargas = cargas))}
 
 }
 
